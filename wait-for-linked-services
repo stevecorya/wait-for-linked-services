@@ -165,47 +165,4 @@ function wait_for_check_url {
     return 1
 }
 
-function parallellize() {
-    if [[ $# -eq 0 ]]; then
-        e "No linked services found to check; assuming lone wolf."
-        return 0
-    fi
-
-    e "Waiting for services in parallel (timeout=$TIMEOUT):" "$@"
-
-    local pids=()
-
-    on_chld() {
-        for pid in "${pids[@]}"; do
-            kill -0 "$pid" 2>/dev/null || wait "$pid"
-        done
-    }
-
-    set -o monitor
-    trap on_chld CHLD
-
-    for url in "$@"; do
-        "$0" "$url" &
-        pids+=($!)
-    done
-
-    debug "Waiting for pids:" "${pids[@]}"
-    wait
-    debug "Services up:" "$@"
-}
-
-function main {
-    # If none were specified, check all linked services
-    if [[ $# -eq 0 ]]; then
-        debug "Getting a list of all linked services"
-        set -- $(get_primary_service_urls | sort -u)
-    fi
-
-    # If we have one, run direct. If many, check in parallel.
-    case $# in
-        1) wait_for_check_url "$1" ;;
-        *) parallellize "$@" ;;
-    esac
-}
-
-main "$@"
+wait_for_check_url "$1"
